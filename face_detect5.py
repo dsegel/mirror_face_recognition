@@ -1,6 +1,7 @@
 import argparse
 import face_recognition
 import imutils
+from imutils.video import VideoStream
 import pickle
 import cv2
 import os
@@ -9,7 +10,7 @@ import sys
 from datetime import datetime
 from gtts import gTTS
 
-print("[INFO] Libraries loaded...")
+print(f"[{datetime.now().strftime('%m/%d/%Y %H:%M:%S')}] libraries loaded...")
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
@@ -49,7 +50,12 @@ greeting_date_dict = {
 
 # initialize the video stream and allow the camera sensor to warm up
 print(f"[{now()}] starting video stream...")
-vs = cv2.VideoCapture(0)
+# VideoStream is threaded
+vs = VideoStream().start()
+
+# regular opencv class
+# vs = cv2.VideoCapture(0)
+# vs.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
 
 
 def adjust_gamma(image, gamma=1.0):
@@ -77,18 +83,15 @@ def getDayPart():
 
 # loop over frames from the video file stream
 while True:
-    global frame
-    curHour = datetime.now().strftime("%H")
-    curMinute = datetime.now().strftime("%M")
-    daypart = getDayPart()
-    message = "Good " + daypart + " "
+    # global frame
 
-    ret, frame = vs.read()
-    if ret is False:
-        continue
+    frame = vs.read()
+    # if ret is False:
+    #     print(f"[{now()}] ret is False")
+    #     continue
 
     # print("Got a frame...")
-    frame = imutils.resize(frame, width=512)
+    frame = imutils.resize(frame, width=1024)
     # frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
 
     gamma = 1.5
@@ -105,7 +108,7 @@ while True:
                                       minNeighbors=6, minSize=(28, 28),
                                       flags=cv2.CASCADE_SCALE_IMAGE)
     # if rects is not None:
-    #    print("Face detected")
+    #    print(f"[{now()}] Face detected")
 
     # OpenCV returns bounding box coordinates in (x, y, w, h) order
     # but we need them in (top, right, bottom, left) order, so we
@@ -114,17 +117,16 @@ while True:
 
     # compute the facial embeddings for each face bounding box
     encodings = face_recognition.face_encodings(rgb, boxes)
-    names = []
 
     # print("      Done getting boxes")
     # loop over the facial embeddings
     for encoding in encodings:
-        # attempt to match each face in the input image to our known
-        # encodings
-        matches = face_recognition.compare_faces(data["encodings"],
-                                                 encoding)
+        print(f"[{now()}] found something, now looking for face match")
+        # name = "Unknown"
 
-        name = "Unknown"
+        # attempt to match each face in the input image to our known encodings
+        matches = face_recognition.compare_faces(data["encodings"], encoding)
+
         # check to see if we have found a match
         if True in matches:
             curHour = datetime.now().strftime("%H")
@@ -145,16 +147,16 @@ while True:
             # determine the recognized face with the largest number of votes
             name = max(counts, key=counts.get)
 
-            print(f"[{now()}] Identified: {name} for the {daypart}")
+            print(f"[{now()}] Identified: {name} in the {daypart}")
             filename = name + "_" + timestamp() + ".jpg"
             cv2.imwrite(filename, frame)
 
-            if greeting_date_dict[name] != daypart:
+            if greeting_date_dict[name] != daypart and name != 'Sophie':
                 print(f"[{now()}] No greeting yet, so using: {message}")
-                speak(message)
+                # speak(message)
                 greeting_date_dict[name] = daypart
             else:
-                print(f"[{now()}] Already greeted {name} for the {daypart}")
+                print(f"[{now()}] ...already greeted {name} in the {daypart}")
 
     if boxes is None:
         cv2.destroyAllWindows()
