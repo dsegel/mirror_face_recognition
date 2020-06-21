@@ -4,8 +4,9 @@ import imutils
 import pickle
 import cv2
 import os
-import datetime
 import numpy as np
+import sys
+from datetime import datetime
 from gtts import gTTS
 
 print("[INFO] Libraries loaded...")
@@ -18,18 +19,25 @@ ap.add_argument("-e", "--encodings", required=True,
                 help="path to serialized db of facial encodings")
 args = vars(ap.parse_args())
 
-# load the known faces and embeddings along with OpenCV's Haar
-# cascade for face detection
-# load the known faces and embeddings along with OpenCV's Haar
-# cascade for face detection
-print("[INFO] loading encodings...")
-# file = open("encodings_cnn_20190902.pickle",'rb')
-# data = pickle.load(file)
+
+def now():
+    return(datetime.now().strftime("%m/%d/%Y %H:%M:%S"))
+
+
+def timestamp():
+    return(datetime.now().strftime("%Y%m%d_%H%M%S"))
+
+
+def curTime():
+    return(datetime.now().strftime("%H:%M:%S"))
+
+
+# load the known faces and embeddings along with OpenCV's Haar cascade for face detection
+print(f"[{now()}] loading encodings...")
 data = pickle.loads(open(args["encodings"], "rb").read())
 
-print("[INFO] loading face detector...")
+print(f"[{now()}] loading face detector...")
 detector = cv2.CascadeClassifier(args["cascade"])
-# detector = cv2.CascadeClassifier("haarcascade_frontalface_alt.xml")
 
 greeting_date_dict = {
     "Everett": "None",
@@ -40,7 +48,7 @@ greeting_date_dict = {
     }
 
 # initialize the video stream and allow the camera sensor to warm up
-print("[INFO] starting video stream...")
+print(f"[{now()}] starting video stream...")
 vs = cv2.VideoCapture(0)
 
 
@@ -58,13 +66,9 @@ def speak(message):
 
 
 def getDayPart():
-    global today, now, daypart
-    now = datetime.datetime.now()
-    curHour = now.hour
-    today = now.strftime("%Y%m%d")
-    if curHour > 17:
+    if int(curHour) > 17:
         daypart = 'evening'
-    elif curHour > 11:
+    elif int(curHour) > 11:
         daypart = 'afternoon'
     else:
         daypart = 'morning'
@@ -74,20 +78,17 @@ def getDayPart():
 # loop over frames from the video file stream
 while True:
     global frame
-    now = datetime.datetime.now()
-    curHour = now.hour
-    curMinute = now.minute
-    curSecond = now.second
-    now = now.strftime("%Y%m%d_%H%M%S")
+    curHour = datetime.now().strftime("%H")
+    curMinute = datetime.now().strftime("%M")
     daypart = getDayPart()
     message = "Good " + daypart + " "
-    # message = "Good+" + daypart + "+"
 
     ret, frame = vs.read()
     if ret is False:
         continue
 
-    frame = imutils.resize(frame, width=1024)
+    # print("Got a frame...")
+    frame = imutils.resize(frame, width=512)
     # frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
 
     gamma = 1.5
@@ -118,7 +119,6 @@ while True:
     # print("      Done getting boxes")
     # loop over the facial embeddings
     for encoding in encodings:
-        print("Looking for face match")
         # attempt to match each face in the input image to our known
         # encodings
         matches = face_recognition.compare_faces(data["encodings"],
@@ -127,47 +127,34 @@ while True:
         name = "Unknown"
         # check to see if we have found a match
         if True in matches:
-            # find the indexes of all matched faces then initialize a
-            # dictionary to count the total number of times each face
-            # was matched
+            curHour = datetime.now().strftime("%H")
+            curMinute = datetime.now().strftime("%M")
+            daypart = getDayPart()
+            message = "Good " + daypart + " "
+
+            # find the indexes of all matched faces then initialize a dictionary to count the
+            # total number of times each face was matched
             matchedIdxs = [i for (i, b) in enumerate(matches) if b]
             counts = {}
 
-            # loop over the matched indexes and maintain a count for
-            # each recognized face face
+            # loop over the matched indexes and maintain a count for each recognized face
             for i in matchedIdxs:
                 name = data["names"][i]
                 counts[name] = counts.get(name, 0) + 1
 
-            # determine the recognized face with the largest number
-            # of votes (note: in the event of an unlikely tie Python
-            # will select first entry in the dictionary)
+            # determine the recognized face with the largest number of votes
             name = max(counts, key=counts.get)
 
-            print("[INFO][{}] Identified: {} during hour {}, {}"
-                  .format(now, name, now.hour, daypart))
-            filename = name + "_" + now + ".jpg"
+            print(f"[{now()}] Identified: {name} for the {daypart}")
+            filename = name + "_" + timestamp() + ".jpg"
             cv2.imwrite(filename, frame)
 
-    # filename_box = name + "_" + time + "_box.jpg"
-    # for (top, right, bottom, left) in boxes:
-        # draw the predicted face name on the image
-        # cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
-        # y = top - 15 if top - 15 > 15 else top + 15
-        # cv2.putText(frame, name, (left, y), cv2.FONT_HERSHEY_SIMPLEX,
-        # 0.75, (0, 255, 0), 2)
-        # cv2.imwrite(filename_box, frame)
-
             if greeting_date_dict[name] != daypart:
-                print("[INFO] No greeting yet, so using: {}"
-                      .format(message + name))
-                message = "Good " + daypart + ", " + name
+                print(f"[{now()}] No greeting yet, so using: {message}")
                 speak(message)
-                filename = name + "_" + now + ".jpg"
                 greeting_date_dict[name] = daypart
             else:
-                print("[INFO][{}] Already greeted {} for the {}"
-                      .format(now, name, daypart))
+                print(f"[{now()}] Already greeted {name} for the {daypart}")
 
     if boxes is None:
         cv2.destroyAllWindows()
@@ -176,3 +163,4 @@ while True:
 vs.release()
 cv2.destroyAllWindows()
 vs.stop()
+sys.exit(0)
