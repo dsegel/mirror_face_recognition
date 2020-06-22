@@ -121,7 +121,7 @@ while True:
     # print("      Done getting boxes")
     # loop over the facial embeddings
     for encoding in encodings:
-        print(f"[{now()}] found something, now looking for face match")
+        print(f"[{now()}] found something, now looking for face match...", end="")
         # name = "Unknown"
 
         # attempt to match each face in the input image to our known encodings
@@ -147,7 +147,7 @@ while True:
             # determine the recognized face with the largest number of votes
             name = max(counts, key=counts.get)
 
-            print(f"[{now()}] Identified: {name} in the {daypart}")
+            print(f"identified {name} in the {daypart}")
             filename = name + "_" + timestamp() + ".jpg"
             cv2.imwrite(filename, frame)
 
@@ -157,6 +157,8 @@ while True:
                 greeting_date_dict[name] = daypart
             else:
                 print(f"[{now()}] ...already greeted {name} in the {daypart}")
+        else:
+            print("no matches found")
 
     if boxes is None:
         cv2.destroyAllWindows()
