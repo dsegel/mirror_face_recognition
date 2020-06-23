@@ -151,7 +151,8 @@ while True:
             filename = name + "_" + timestamp() + ".jpg"
             cv2.imwrite(filename, frame)
 
-            if greeting_date_dict[name] != daypart and name != 'Sophie':
+            # if greeting_date_dict[name] != daypart and name != 'Sophie':
+            if greeting_date_dict[name] != daypart:
                 print(f"[{now()}] No greeting yet, so using: {message}")
                 # speak(message)
                 greeting_date_dict[name] = daypart
